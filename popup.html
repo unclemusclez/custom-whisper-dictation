@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Custom Whisper Dictation</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        padding: 10px;
+        width: 300px;
+      }
+      label {
+        display: block;
+        margin: 5px 0;
+      }
+      input,
+      select {
+        width: 100%;
+        padding: 5px;
+        margin-bottom: 10px;
+      }
+      button {
+        width: 100%;
+        padding: 8px;
+        background-color: #4caf50;
+        color: white;
+        border: none;
+      }
+      button:hover {
+        background-color: #45a049;
+      }
+    </style>
+  </head>
+  <body>
+    <h3>Custom Whisper Settings</h3>
+    <label>Custom Endpoint URL:</label>
+    <input
+      type="text"
+      id="endpointUrl"
+      placeholder="e.g., https://yourserver.com/v1/audio/transcriptions"
+    />
+    <label>API Key:</label>
+    <input type="text" id="apiKey" placeholder="Enter your API key" />
+    <label>Model:</label>
+    <select id="model">
+      <option value="tiny">Tiny</option>
+      <option value="base">Base</option>
+      <option value="small">Small</option>
+      <option value="medium">Medium</option>
+      <option value="large">Large</option>
+    </select>
+    <button id="saveBtn">Save Settings</button>
+    <button id="startBtn">Start Dictation</button>
+    <button id="stopBtn" style="background-color: #f44336">
+      Stop Dictation
+    </button>
+    <p id="status"></p>
+    <script src="popup.js"></script>
+  </body>
+</html>
