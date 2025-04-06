@@ -7,14 +7,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const stopBtn = document.getElementById("stopBtn");
   const status = document.getElementById("status");
 
-  // Load saved settings
   chrome.storage.sync.get(["endpointUrl", "apiKey", "model"], (data) => {
     endpointUrl.value = data.endpointUrl || "";
     apiKey.value = data.apiKey || "";
     model.value = data.model || "";
   });
 
-  // Save settings
   saveBtn.addEventListener("click", () => {
     const settings = {
       endpointUrl: endpointUrl.value,
@@ -27,23 +25,21 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
-  // Start dictation
   startBtn.addEventListener("click", () => {
     chrome.runtime.sendMessage({ action: "startDictation" });
     status.textContent = "Dictation started...";
   });
 
-  // Stop dictation
   stopBtn.addEventListener("click", () => {
     chrome.runtime.sendMessage({ action: "stopDictation" });
     status.textContent = "Dictation stopped.";
   });
 
-  // Display transcription status (optional, for debugging)
   chrome.runtime.onMessage.addListener((message) => {
     if (message.action === "transcription") {
-      status.textContent = `Transcription sent to textarea: ${message.text}`;
-      setTimeout(() => (status.textContent = ""), 2000);
+      console.log("[Popup] Received transcription:", message.text);
+      status.textContent = `Transcription: ${message.text}`;
+      setTimeout(() => (status.textContent = ""), 5000); // Show for 5 seconds
     }
   });
 });

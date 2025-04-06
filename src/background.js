@@ -78,7 +78,7 @@ function sendToCustomEndpoint(audioBlob, settings) {
   formData.append("file", audioBlob, "audio.wav");
   formData.append("model", settings.model || "base");
 
-  console.log("[Background] Sending to endpoint:", settingsmovie.endpointUrl);
+  console.log("[Background] Sending to endpoint:", settings.endpointUrl);
   fetch(settings.endpointUrl, {
     method: "POST",
     headers: {
@@ -94,13 +94,13 @@ function sendToCustomEndpoint(audioBlob, settings) {
     })
     .then((data) => {
       console.log("[Background] Full server response:", data);
-      const transcription =
-        data.text || (data.transcription ? data.transcription : null);
+      const transcription = data.text || data.transcription || null;
       if (transcription) {
+        // Send to content script
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]) {
             console.log(
-              "[Background] Sending transcription to tab:",
+              "[Background] Sending to content script - tab:",
               tabs[0].id,
               "text:",
               transcription,
@@ -117,12 +117,12 @@ function sendToCustomEndpoint(audioBlob, settings) {
               (response) => {
                 if (chrome.runtime.lastError) {
                   console.error(
-                    "[Background] Send message error:",
+                    "[Background] Content script send error:",
                     chrome.runtime.lastError.message
                   );
                 } else {
                   console.log(
-                    "[Background] Message sent successfully, response:",
+                    "[Background] Content script response:",
                     response
                   );
                 }
@@ -132,6 +132,21 @@ function sendToCustomEndpoint(audioBlob, settings) {
             console.error("[Background] No active tab found");
           }
         });
+        // Send to popup
+        console.log("[Background] Sending to popup - text:", transcription);
+        chrome.runtime.sendMessage(
+          { action: "transcription", text: transcription },
+          (response) => {
+            if (chrome.runtime.lastError) {
+              console.log(
+                "[Background] Popup not open or no response:",
+                chrome.runtime.lastError.message
+              );
+            } else {
+              console.log("[Background] Popup response:", response);
+            }
+          }
+        );
       } else {
         console.error("[Background] No transcription found in response:", data);
       }
