@@ -11,7 +11,7 @@ document.addEventListener("DOMContentLoaded", () => {
   chrome.storage.sync.get(["endpointUrl", "apiKey", "model"], (data) => {
     endpointUrl.value = data.endpointUrl || "";
     apiKey.value = data.apiKey || "";
-    model.value = data.model || "base";
+    model.value = data.model || "";
   });
 
   // Save settings
@@ -39,10 +39,11 @@ document.addEventListener("DOMContentLoaded", () => {
     status.textContent = "Dictation stopped.";
   });
 
-  // Listen for transcription updates
+  // Display transcription status (optional, for debugging)
   chrome.runtime.onMessage.addListener((message) => {
     if (message.action === "transcription") {
-      status.textContent = `Transcription: ${message.text}`;
+      status.textContent = `Transcription sent to textarea: ${message.text}`;
+      setTimeout(() => (status.textContent = ""), 2000);
     }
   });
 });

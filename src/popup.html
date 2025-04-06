@@ -12,8 +12,7 @@
         display: block;
         margin: 5px 0;
       }
-      input,
-      select {
+      input {
         width: 100%;
         padding: 5px;
         margin-bottom: 10px;
@@ -21,12 +20,19 @@
       button {
         width: 100%;
         padding: 8px;
+        margin-bottom: 5px;
         background-color: #4caf50;
         color: white;
         border: none;
       }
       button:hover {
         background-color: #45a049;
+      }
+      #stopBtn {
+        background-color: #f44336;
+      }
+      #stopBtn:hover {
+        background-color: #da190b;
       }
     </style>
   </head>
@@ -41,18 +47,10 @@
     <label>API Key:</label>
     <input type="text" id="apiKey" placeholder="Enter your API key" />
     <label>Model:</label>
-    <select id="model">
-      <option value="tiny">Tiny</option>
-      <option value="base">Base</option>
-      <option value="small">Small</option>
-      <option value="medium">Medium</option>
-      <option value="large">Large</option>
-    </select>
+    <input type="text" id="model" placeholder="e.g., tiny, custom-model" />
     <button id="saveBtn">Save Settings</button>
-    <button id="startBtn">Start Dictation</button>
-    <button id="stopBtn" style="background-color: #f44336">
-      Stop Dictation
-    </button>
+    <button id="startBtn">Start Dictation to Textarea</button>
+    <button id="stopBtn">Stop Dictation</button>
     <p id="status"></p>
     <script src="popup.js"></script>
   </body>

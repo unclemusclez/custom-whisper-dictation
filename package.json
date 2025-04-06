@@ -1,0 +1,12 @@
+{
+  "name": "custom-whisper-dictation",
+  "version": "1.0.0",
+  "description": "Build script for browser extension",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "fs-extra": "^11.1.1",
+    "archiver": "^5.3.1"
+  }
+}
