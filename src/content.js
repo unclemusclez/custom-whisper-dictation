@@ -1,7 +1,12 @@
-// Function to inject button into a textarea
 function injectButton(textarea) {
-  // Skip if button already exists
-  if (textarea.nextSibling && textarea.nextSibling.tagName === "BUTTON") return;
+  // Ensure no duplicate buttons
+  if (textarea.nextSibling && textarea.nextSibling.tagName === "BUTTON") {
+    console.log(
+      "[Content] Skipping textarea, button already exists:",
+      textarea.dataset.textareaId
+    );
+    return;
+  }
 
   const button = document.createElement("button");
   button.textContent = "Start Dictation";
@@ -20,31 +25,38 @@ function injectButton(textarea) {
 
   textarea.style.position = "relative";
   textarea.parentNode.insertBefore(button, textarea.nextSibling);
+  textarea.dataset.textareaId = textarea.id || generateUniqueId();
 
   button.addEventListener("click", () => {
     const isRecording = button.dataset.recording === "true";
-    const textareaId = textarea.id || generateUniqueId();
+    const textareaId = textarea.dataset.textareaId;
     if (!isRecording) {
       chrome.runtime.sendMessage({ action: "startDictation", textareaId });
       button.textContent = "Stop Dictation";
       button.style.backgroundColor = "#f44336";
       button.dataset.recording = "true";
+      console.log("[Content] Start dictation for textareaId:", textareaId);
     } else {
       chrome.runtime.sendMessage({ action: "stopDictation", textareaId });
       button.textContent = "Start Dictation";
       button.style.backgroundColor = "#4CAF50";
       button.dataset.recording = "false";
+      console.log("[Content] Stop dictation for textareaId:", textareaId);
     }
   });
 
-  // Store textareaId on the textarea element for message handling
-  textarea.dataset.textareaId = textarea.id || generateUniqueId();
+  console.log(
+    "[Content] Button injected for textareaId:",
+    textarea.dataset.textareaId
+  );
 }
 
-// Initial injection for existing textareas
-document.querySelectorAll("textarea").forEach(injectButton);
+// Inject buttons into existing textareas
+document.querySelectorAll("textarea").forEach((textarea) => {
+  injectButton(textarea);
+});
 
-// Observe DOM changes to catch new textareas
+// Observe DOM changes, only for textareas
 const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.addedNodes.length) {
@@ -61,10 +73,17 @@ const observer = new MutationObserver((mutations) => {
 observer.observe(document.body, { childList: true, subtree: true });
 
 // Handle transcription
-chrome.runtime.onMessage.addListener((message) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "insertTranscription") {
+    console.log("[Content] Received transcription message:", message);
     document.querySelectorAll("textarea").forEach((textarea) => {
       if (textarea.dataset.textareaId === message.textareaId) {
+        console.log(
+          "[Content] Inserting text into textareaId:",
+          message.textareaId,
+          "text:",
+          message.text
+        );
         textarea.value += message.text + " ";
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
         const button = textarea.nextSibling;
@@ -75,10 +94,10 @@ chrome.runtime.onMessage.addListener((message) => {
         }
       }
     });
+    sendResponse({ status: "success" }); // Acknowledge receipt
   }
 });
 
-// Generate a unique ID if needed
 function generateUniqueId() {
   return "textarea-" + Math.random().toString(36).substr(2, 9);
 }
