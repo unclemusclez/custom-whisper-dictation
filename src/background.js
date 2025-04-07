@@ -31,7 +31,7 @@ function startDictation() {
     navigator.mediaDevices
       .getUserMedia({ audio: true })
       .then((stream) => {
-        mediaRecorder = new MediaRecorder(stream);
+        mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
         audioChunks = [];
         recordingStartTime = Date.now();
 
@@ -48,7 +48,7 @@ function startDictation() {
 
         mediaRecorder.onstop = () => {
           const duration = (Date.now() - recordingStartTime) / 1000;
-          const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
+          const audioBlob = new Blob(audioChunks, { type: "audio/webm" });
           console.log(
             "[Background] Recording stopped, duration:",
             duration,
@@ -59,7 +59,11 @@ function startDictation() {
           stream.getTracks().forEach((track) => track.stop());
         };
 
-        mediaRecorder.start(1000); // Send data every 1 second to keep stream alive
+        mediaRecorder.onerror = (event) => {
+          console.error("[Background] MediaRecorder error:", event.error);
+        };
+
+        mediaRecorder.start(1000);
         console.log(
           "[Background] Recording started for textareaId:",
           activeTextareaId
@@ -83,7 +87,7 @@ function stopDictation() {
 
 function sendToCustomEndpoint(audioBlob, settings) {
   const formData = new FormData();
-  formData.append("file", audioBlob, "audio.wav");
+  formData.append("file", audioBlob, "audio.webm");
   formData.append("model", settings.model || "base");
 
   console.log("[Background] Sending to endpoint:", settings.endpointUrl);
