@@ -1,6 +1,7 @@
 let mediaRecorder;
 let audioChunks = [];
 let activeTextareaId = null;
+let recordingStartTime = null;
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "startDictation") {
@@ -32,26 +33,33 @@ function startDictation() {
       .then((stream) => {
         mediaRecorder = new MediaRecorder(stream);
         audioChunks = [];
+        recordingStartTime = Date.now();
 
         mediaRecorder.ondataavailable = (event) => {
           audioChunks.push(event.data);
           console.log(
             "[Background] Audio chunk captured, size:",
-            event.data.size
+            event.data.size,
+            "time elapsed:",
+            (Date.now() - recordingStartTime) / 1000,
+            "seconds"
           );
         };
 
         mediaRecorder.onstop = () => {
+          const duration = (Date.now() - recordingStartTime) / 1000;
           const audioBlob = new Blob(audioChunks, { type: "audio/wav" });
           console.log(
-            "[Background] Recording stopped, blob size:",
+            "[Background] Recording stopped, duration:",
+            duration,
+            "seconds, blob size:",
             audioBlob.size
           );
           sendToCustomEndpoint(audioBlob, settings);
           stream.getTracks().forEach((track) => track.stop());
         };
 
-        mediaRecorder.start();
+        mediaRecorder.start(1000); // Send data every 1 second to keep stream alive
         console.log(
           "[Background] Recording started for textareaId:",
           activeTextareaId
@@ -96,57 +104,26 @@ function sendToCustomEndpoint(audioBlob, settings) {
       console.log("[Background] Full server response:", data);
       const transcription = data.text || data.transcription || null;
       if (transcription) {
-        // Send to content script
         chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
           if (tabs[0]) {
             console.log(
               "[Background] Sending to content script - tab:",
               tabs[0].id,
               "text:",
-              transcription,
-              "textareaId:",
-              activeTextareaId
+              transcription
             );
-            chrome.tabs.sendMessage(
-              tabs[0].id,
-              {
-                action: "insertTranscription",
-                text: transcription,
-                textareaId: activeTextareaId,
-              },
-              (response) => {
-                if (chrome.runtime.lastError) {
-                  console.error(
-                    "[Background] Content script send error:",
-                    chrome.runtime.lastError.message
-                  );
-                } else {
-                  console.log(
-                    "[Background] Content script response:",
-                    response
-                  );
-                }
-              }
-            );
-          } else {
-            console.error("[Background] No active tab found");
+            chrome.tabs.sendMessage(tabs[0].id, {
+              action: "insertTranscription",
+              text: transcription,
+              textareaId: activeTextareaId,
+            });
           }
         });
-        // Send to popup
         console.log("[Background] Sending to popup - text:", transcription);
-        chrome.runtime.sendMessage(
-          { action: "transcription", text: transcription },
-          (response) => {
-            if (chrome.runtime.lastError) {
-              console.log(
-                "[Background] Popup not open or no response:",
-                chrome.runtime.lastError.message
-              );
-            } else {
-              console.log("[Background] Popup response:", response);
-            }
-          }
-        );
+        chrome.runtime.sendMessage({
+          action: "transcription",
+          text: transcription,
+        });
       } else {
         console.error("[Background] No transcription found in response:", data);
       }
