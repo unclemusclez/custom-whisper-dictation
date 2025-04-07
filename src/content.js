@@ -7,6 +7,24 @@ function injectButton(textarea) {
     return;
   }
 
+  // Get computed size of textarea
+  const computedStyle = window.getComputedStyle(textarea);
+  const width = computedStyle.width;
+  const height = computedStyle.height;
+
+  // Wrap textarea in a relative container
+  const wrapper = document.createElement("div");
+  wrapper.style.cssText = `
+    position: relative;
+    display: inline-block;
+    width: ${width};
+    height: ${height};
+  `;
+  console.log("[Content] Created wrapper with size:", width, "x", height);
+  textarea.parentNode.insertBefore(wrapper, textarea);
+  wrapper.appendChild(textarea);
+  console.log("[Content] Wrapped textarea in div");
+
   const button = document.createElement("button");
   button.innerHTML = `
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mic-icon">
@@ -21,8 +39,9 @@ function injectButton(textarea) {
   const isDarkMode = window.matchMedia("(prefers-color-scheme: dark)").matches;
   button.style.cssText = `
     position: absolute;
-    top: 2px;
-    right: 2px;
+    top: 10px;
+    right: 10px;
+    left: auto;
     width: 20px;
     height: 20px;
     background-color: ${isDarkMode ? "#555" : "#ddd"};
@@ -32,18 +51,16 @@ function injectButton(textarea) {
     display: flex;
     align-items: center;
     justify-content: center;
-    border-radius: 50%; /* Circular button */
+    border-radius: 50%;
     z-index: 1000;
   `;
 
-  textarea.style.position = "relative";
-  textarea.style.paddingTop = "24px"; // Prevent overlap with button
-  textarea.parentNode.insertBefore(button, textarea.nextSibling);
+  wrapper.appendChild(button);
   textarea.dataset.textareaId = textarea.id || generateUniqueId();
-
   console.log(
     "[Content] Injected button for textareaId:",
-    textarea.dataset.textareaId
+    textarea.dataset.textareaId,
+    "at top: 10px, right: 10px"
   );
 
   button.addEventListener("click", () => {
@@ -78,9 +95,11 @@ function injectButton(textarea) {
 
 function injectButtonsIntoAllTextareas() {
   console.log("[Content] Scanning for textareas to inject buttons");
-  document.querySelectorAll("textarea").forEach((textarea) => {
-    injectButton(textarea);
-  });
+  document
+    .querySelectorAll("textarea:not([data-textareaId])")
+    .forEach((textarea) => {
+      injectButton(textarea);
+    });
 }
 
 injectButtonsIntoAllTextareas();
@@ -90,7 +109,7 @@ const observer = new MutationObserver((mutations) => {
   mutations.forEach((mutation) => {
     if (mutation.addedNodes.length) {
       mutation.addedNodes.forEach((node) => {
-        if (node.tagName === "TEXTAREA") {
+        if (node.tagName === "TEXTAREA" && !node.dataset.textareaId) {
           console.log("[Content] New textarea detected by observer");
           injectButton(node);
           textareaAdded = true;
