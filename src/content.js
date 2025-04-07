@@ -7,23 +7,30 @@ function injectButton(textarea) {
     return;
   }
 
-  // Get computed size of textarea
   const computedStyle = window.getComputedStyle(textarea);
   const width = computedStyle.width;
   const height = computedStyle.height;
 
-  // Wrap textarea in a relative container
   const wrapper = document.createElement("div");
   wrapper.style.cssText = `
     position: relative;
     display: inline-block;
     width: ${width};
     height: ${height};
+    overflow: visible; /* Let textarea scroll naturally */
   `;
   console.log("[Content] Created wrapper with size:", width, "x", height);
   textarea.parentNode.insertBefore(wrapper, textarea);
   wrapper.appendChild(textarea);
   console.log("[Content] Wrapped textarea in div");
+
+  // Ensure textarea can scroll
+  textarea.style.cssText = `
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    overflow-y: auto; /* Enable vertical scroll */
+  `;
 
   const button = document.createElement("button");
   button.innerHTML = `
@@ -130,12 +137,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       if (textarea.dataset.textareaId === message.textareaId) {
         console.log(
           "[Content] Inserting text into textareaId:",
-          message.textareaId,
+          textarea.dataset.textareaId,
           "text:",
           message.text
         );
         textarea.value += message.text + " ";
         textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        // Scroll to the cursor position
+        textarea.scrollTop = textarea.scrollHeight; // Scroll to bottom
+        textarea.setSelectionRange(
+          textarea.value.length,
+          textarea.value.length
+        ); // Move cursor to end
         const button = textarea.nextSibling;
         if (button && button.tagName === "BUTTON") {
           button.innerHTML = `
