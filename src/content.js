@@ -20,11 +20,10 @@ function injectButton(textarea) {
     color: white;
     border: none;
     cursor: pointer;
-    z-index: 1000; /* Ensure it’s on top */
+    z-index: 1000;
   `;
   button.dataset.recording = "false";
 
-  // Ensure textarea is positioned relatively
   textarea.style.position = "relative";
   textarea.parentNode.insertBefore(button, textarea.nextSibling);
   textarea.dataset.textareaId = textarea.id || generateUniqueId();
@@ -53,27 +52,39 @@ function injectButton(textarea) {
   });
 }
 
-// Inject into existing textareas
-document.querySelectorAll("textarea").forEach((textarea) => {
-  console.log("[Content] Found textarea during initial scan");
-  injectButton(textarea);
-});
+// Function to inject buttons into all textareas
+function injectButtonsIntoAllTextareas() {
+  console.log("[Content] Scanning for textareas to inject buttons");
+  document.querySelectorAll("textarea").forEach((textarea) => {
+    injectButton(textarea);
+  });
+}
 
-// Watch for new textareas
+// Initial injection
+injectButtonsIntoAllTextareas();
+
+// Watch for DOM changes
 const observer = new MutationObserver((mutations) => {
+  let textareaAdded = false;
   mutations.forEach((mutation) => {
     if (mutation.addedNodes.length) {
       mutation.addedNodes.forEach((node) => {
         if (node.tagName === "TEXTAREA") {
           console.log("[Content] New textarea detected by observer");
           injectButton(node);
+          textareaAdded = true;
         }
       });
     }
   });
+  // If no new textareas were added but the DOM changed, recheck all
+  if (!textareaAdded) {
+    injectButtonsIntoAllTextareas();
+  }
 });
 observer.observe(document.body, { childList: true, subtree: true });
 
+// Handle transcription
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === "insertTranscription") {
     console.log("[Content] Received insertTranscription:", message);
