@@ -7,30 +7,17 @@ function injectButton(textarea) {
     return;
   }
 
-  const computedStyle = window.getComputedStyle(textarea);
-  const width = computedStyle.width;
-  const height = computedStyle.height;
-
   const wrapper = document.createElement("div");
   wrapper.style.cssText = `
     position: relative;
-    display: inline-block;
-    width: ${width};
-    height: ${height};
-    overflow: visible; /* Let textarea scroll naturally */
+    display: block;
   `;
-  console.log("[Content] Created wrapper with size:", width, "x", height);
+  console.log("[Content] Created wrapper");
   textarea.parentNode.insertBefore(wrapper, textarea);
   wrapper.appendChild(textarea);
   console.log("[Content] Wrapped textarea in div");
 
-  // Ensure textarea can scroll
-  textarea.style.cssText = `
-    width: 100%;
-    height: 100%;
-    box-sizing: border-box;
-    overflow-y: auto; /* Enable vertical scroll */
-  `;
+  textarea.style.overflowY = "auto";
 
   const button = document.createElement("button");
   button.innerHTML = `
@@ -66,8 +53,7 @@ function injectButton(textarea) {
   textarea.dataset.textareaId = textarea.id || generateUniqueId();
   console.log(
     "[Content] Injected button for textareaId:",
-    textarea.dataset.textareaId,
-    "at top: 10px, right: 10px"
+    textarea.dataset.textareaId
   );
 
   button.addEventListener("click", () => {
@@ -85,19 +71,47 @@ function injectButton(textarea) {
       console.log("[Content] Sent startDictation for textareaId:", textareaId);
     } else {
       chrome.runtime.sendMessage({ action: "stopDictation", textareaId });
-      button.innerHTML = `
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mic-icon">
-          <path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"></path>
-          <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-          <line x1="12" y1="19" x2="12" y2="23"></line>
-          <line x1="8" y1="23" x2="16" y2="23"></line>
-        </svg>
-      `;
-      button.style.backgroundColor = isDarkMode ? "#555" : "#ddd";
-      button.dataset.recording = "false";
+      resetButton(button, isDarkMode);
       console.log("[Content] Sent stopDictation for textareaId:", textareaId);
     }
   });
+
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    if (
+      message.action === "insertTranscription" &&
+      message.textareaId === textarea.dataset.textareaId
+    ) {
+      console.log(
+        "[Content] Inserting text into textareaId:",
+        message.textareaId,
+        "text:",
+        message.text
+      );
+      textarea.value += message.text + " ";
+      textarea.dispatchEvent(new Event("input", { bubbles: true }));
+      textarea.scrollTop = textarea.scrollHeight;
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+    } else if (
+      message.action === "resetButton" &&
+      message.textareaId === textarea.dataset.textareaId
+    ) {
+      resetButton(button, isDarkMode);
+    }
+    sendResponse({ status: "success" });
+  });
+}
+
+function resetButton(button, isDarkMode) {
+  button.innerHTML = `
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mic-icon">
+      <path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"></path>
+      <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+      <line x1="12" y1="19" x2="12" y2="23"></line>
+      <line x1="8" y1="23" x2="16" y2="23"></line>
+    </svg>
+  `;
+  button.style.backgroundColor = isDarkMode ? "#555" : "#ddd";
+  button.dataset.recording = "false";
 }
 
 function injectButtonsIntoAllTextareas() {
@@ -129,48 +143,6 @@ const observer = new MutationObserver((mutations) => {
   }
 });
 observer.observe(document.body, { childList: true, subtree: true });
-
-chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message.action === "insertTranscription") {
-    console.log("[Content] Received insertTranscription:", message);
-    document.querySelectorAll("textarea").forEach((textarea) => {
-      if (textarea.dataset.textareaId === message.textareaId) {
-        console.log(
-          "[Content] Inserting text into textareaId:",
-          textarea.dataset.textareaId,
-          "text:",
-          message.text
-        );
-        textarea.value += message.text + " ";
-        textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        // Scroll to the cursor position
-        textarea.scrollTop = textarea.scrollHeight; // Scroll to bottom
-        textarea.setSelectionRange(
-          textarea.value.length,
-          textarea.value.length
-        ); // Move cursor to end
-        const button = textarea.nextSibling;
-        if (button && button.tagName === "BUTTON") {
-          button.innerHTML = `
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mic-icon">
-              <path d="M12 1a3 3 0 0 1 3 3v8a3 3 0 0 1-6 0V4a3 3 0 0 1 3-3z"></path>
-              <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-              <line x1="12" y1="19" x2="12" y2="23"></line>
-              <line x1="8" y1="23" x2="16" y2="23"></line>
-            </svg>
-          `;
-          button.style.backgroundColor = window.matchMedia(
-            "(prefers-color-scheme: dark)"
-          ).matches
-            ? "#555"
-            : "#ddd";
-          button.dataset.recording = "false";
-        }
-      }
-    });
-    sendResponse({ status: "success" });
-  }
-});
 
 function generateUniqueId() {
   return "textarea-" + Math.random().toString(36).substr(2, 9);
